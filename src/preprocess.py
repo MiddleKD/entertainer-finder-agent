@@ -1,7 +1,7 @@
 import pandas as pd
 from tqdm import tqdm
 import os
-import wget
+import requests
 from datetime import datetime, timezone
 
 from model import FaceEmbeddingModel
@@ -40,7 +40,9 @@ class Crawler:
 
             try:
                 save_path = os.path.join(self.base_save_path, url)
-                wget.download(self.base_url+url, save_path)
+                with requests.get(self.base_url+url, timeout=30, stream=True) as r: 
+                    r.raise_for_status()
+                    open(save_path, 'wb').write(r.content)
             except Exception as e:
                 with open("error.log", "a") as f:
                     e_rep = str(e).replace("\n", " ")
@@ -71,13 +73,12 @@ class Preprocessor:
     
     def process_to_data_list(self):
         self.processed_data_list = []
-        for _, row in self.processed_df.iterrows():
+        for idx, (_, row) in enumerate(self.processed_df.iterrows()):
             data = {
-                "id": int(row["idx"]),
+                "id": idx,
                 "payload": {
                     "name_kr": validate(str(row["name_kr"])),
                     "name_en": validate(str(row["name_en"])),
-                    "email": validate(str(row["email"])),
                     "birth": convert_timestamp_to_date(row["birth"]), # 체크필요
                     "gender": "남" if row["gender"] == 1 else "여",
                     "height": int(row["height"]),
@@ -136,18 +137,16 @@ class Preprocessor:
 
 if __name__=="__main__":
     # crawler = Crawler(CRAWL_BASE_URL, CRAWL_DATA_PATH)
-    preprocessor = Preprocessor("member_202503131717.csv")
+    preprocessor = Preprocessor("datas/member_202503311252.csv")
     preprocessor.clean_na()
 
     profile_image_list = preprocessor.get_profile_image_list()
     # crawler.run(profile_image_list)
 
     processed_data_list = preprocessor.process_to_data_list()
-    for cur in processed_data_list[100:120]:
+    for cur in processed_data_list[100:102]:
         print(cur["payload"]["prompt_source"])
 
-    import sys
-    sys.exit()
     face_model = FaceEmbeddingModel()
 
     for data in tqdm(processed_data_list):
