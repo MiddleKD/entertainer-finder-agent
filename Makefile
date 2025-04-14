@@ -9,4 +9,10 @@ qdrant:
 test:
 	PYTHONPATH=$(PWD)/src pytest tests/ -v
 
-.PHONY: run qdrant test 
+format:
+	@echo "Running isort..."
+	isort .
+	@echo "Running black..."
+	black .
+
+.PHONY: run qdrant test format 

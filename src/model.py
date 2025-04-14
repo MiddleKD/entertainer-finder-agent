@@ -1,9 +1,11 @@
 import io
-from typing import Tuple, Union, List, Optional
-import numpy as np
+from typing import List, Optional, Tuple, Union
+
 import cv2
-from PIL import Image
+import numpy as np
 from deepface import DeepFace
+from PIL import Image
+
 
 class FaceEmbeddingModel:
     def __init__(self):
@@ -28,7 +30,9 @@ class FaceEmbeddingModel:
         except Exception as e:
             raise ValueError(f"Failed to convert image to numpy array: {str(e)}")
 
-    def _process_image_list(self, image_list: List[Union[str, io.BytesIO]]) -> List[np.ndarray]:
+    def _process_image_list(
+        self, image_list: List[Union[str, io.BytesIO]]
+    ) -> List[np.ndarray]:
         """이미지 리스트를 BGR 형식의 numpy 배열 리스트로 변환합니다."""
         return [self._convert_to_numpy(img) for img in image_list]
 
@@ -41,24 +45,36 @@ class FaceEmbeddingModel:
             detector_backend=self.detector_backend,
         )
 
-    def _process_embedding_results(self, embedding_objs: List[dict], only_return_face: bool) -> List[Tuple[float, list]]:
+    def _process_embedding_results(
+        self, embedding_objs: List[dict], only_return_face: bool
+    ) -> List[Tuple[float, list]]:
         """임베딩 결과를 처리하여 (confidence, embedding) 튜플 리스트를 반환합니다."""
         results = []
         for embedding_obj in embedding_objs:
             if isinstance(embedding_obj, list):
-                results.extend((cur.get("face_confidence"), cur.get("embedding")) for cur in embedding_obj)
+                results.extend(
+                    (cur.get("face_confidence"), cur.get("embedding"))
+                    for cur in embedding_obj
+                )
             else:
-                results.append((embedding_obj.get("face_confidence"), embedding_obj.get("embedding")))
+                results.append(
+                    (
+                        embedding_obj.get("face_confidence"),
+                        embedding_obj.get("embedding"),
+                    )
+                )
 
         if only_return_face:
-            return [embed for conf, embed in results if conf > self.confidence_threshold]
+            return [
+                embed for conf, embed in results if conf > self.confidence_threshold
+            ]
         return results
 
     def run_model(
-            self,
-            image_input: Union[str, io.BytesIO, List[Union[str, io.BytesIO]]],
-            only_return_face: bool = False
-        ) -> List[Tuple[float, list]]:
+        self,
+        image_input: Union[str, io.BytesIO, List[Union[str, io.BytesIO]]],
+        only_return_face: bool = False,
+    ) -> List[Tuple[float, list]]:
         try:
             # 입력 이미지 처리
             processed_images = (
@@ -72,9 +88,10 @@ class FaceEmbeddingModel:
 
             # 결과 처리 및 반환
             return self._process_embedding_results(embedding_objs, only_return_face)
-            
+
         except Exception as e:
             raise RuntimeError(f"Failed to run face embedding model: {str(e)}")
+
 
 class PromptEmbeddingModel:
     pass

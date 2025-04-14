@@ -1,6 +1,8 @@
-from fastapi import File, Body, UploadFile, Form
-from pydantic import BaseModel
 from typing import Optional
+
+from fastapi import Body, File, Form, UploadFile
+from pydantic import BaseModel
+
 
 class ImageQuery(BaseModel):
     filename: str
@@ -11,6 +13,7 @@ class ImageQuery(BaseModel):
 class EmbeddingResponse(BaseModel):
     item_id: int
     q: Optional[str] = None
+
 
 class EmbeddingRequest(BaseModel):
     image_query: UploadFile = File(...)
