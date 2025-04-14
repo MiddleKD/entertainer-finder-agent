@@ -6,6 +6,9 @@ qdrant:
 		-v $(PWD)/datas/qdrant:/qdrant/storage \
 		qdrant/qdrant 
 
+n8n:
+	docker run -it --rm --name n8n -p 5678:5678 --network host -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n
+
 test:
 	PYTHONPATH=$(PWD)/src pytest tests/ -v
 
@@ -15,4 +18,4 @@ format:
 	@echo "Running black..."
 	black .
 
-.PHONY: run qdrant test format 
+.PHONY: run qdrant test format n8n 
