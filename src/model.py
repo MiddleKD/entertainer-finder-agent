@@ -74,7 +74,7 @@ class FaceEmbeddingModel:
         self,
         image_input: Union[str, io.BytesIO, List[Union[str, io.BytesIO]]],
         only_return_face: bool = False,
-    ) -> List[Tuple[float, list]]:
+    ) -> Union[List[Tuple[float, list]], List[List[float]]]:
         try:
             # 입력 이미지 처리
             processed_images = (

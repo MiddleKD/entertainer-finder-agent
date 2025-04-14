@@ -5,8 +5,9 @@ import pandas as pd
 import requests
 from tqdm import tqdm
 
-from constant import CRAWL_BASE_URL, CRAWL_DATA_PATH
+from constant import CRAWL_BASE_URL, CRAWL_DATA_PATH, VECTOR_DB_URL, VECTOR_DB_COLLECTION
 from model import FaceEmbeddingModel
+from db import VectorDBClient
 
 
 def validate(input_value):
@@ -161,7 +162,11 @@ class Preprocessor:
                 "comments": meta["comments"],
             }
             data["payload"]["prompt_source"] = prompt_source
-
+            data["payload"]["image_url"] = (
+                f"{CRAWL_BASE_URL}{data['payload']['images'][0]}"
+                if data["payload"]["images"]
+                else None
+            )
             self.processed_data_list.append(data)
         return self.processed_data_list
 
@@ -175,12 +180,11 @@ if __name__ == "__main__":
     # crawler.run(profile_image_list)
 
     processed_data_list = preprocessor.process_to_data_list()
-    for cur in processed_data_list[100:102]:
-        print(cur["payload"]["prompt_source"])
 
     face_model = FaceEmbeddingModel()
-
-    for data in tqdm(processed_data_list):
+    db_client = VectorDBClient(VECTOR_DB_URL, VECTOR_DB_COLLECTION)
+    import numpy as np
+    for idx, data in tqdm(enumerate(processed_data_list), total=len(processed_data_list)):
         profile_images = [
             os.path.join(CRAWL_DATA_PATH, cur)
             for cur in data.get("payload").get("images")
@@ -192,6 +196,13 @@ if __name__ == "__main__":
             )
         except Exception as e:
             log(f"[MODEL ERROR] {data['id']} / {str(e)}")
+        
+        prompt_embeddings = np.random.rand(768).tolist()
 
+        db_client.insert(
+            point_id=idx,
+            vectors={"face":face_embeddings, "prompt":prompt_embeddings},
+            payload=data["payload"],
+        )
         data["vector"]["face"] = face_embeddings
         print(f"Success {data['id']}")
