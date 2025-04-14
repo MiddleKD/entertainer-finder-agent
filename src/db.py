@@ -43,7 +43,8 @@ class VectorDBClient:
                                 comparator=MultiVectorComparator("max_sim")
                             ),
                         ),
-                        "prompt": VectorParams(size=768, distance=Distance.COSINE),
+                        "prompt": VectorParams(size=1536, distance=Distance.COSINE),
+                        "main_face": VectorParams(size=512, distance=Distance.COSINE),
                     },
                 )
         except Exception as e:

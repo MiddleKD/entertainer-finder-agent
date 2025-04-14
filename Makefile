@@ -1,6 +1,9 @@
 run:
 	uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 
+preprocess:
+	uv run src/preprocess.py
+
 qdrant:
 	docker run -p 6333:6333 -p 6334:6334 \
 		-v $(PWD)/datas/qdrant:/qdrant/storage \

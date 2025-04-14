@@ -1,11 +1,13 @@
-import io
-from typing import List, Optional, Tuple, Union
+import io, os
+from typing import List, Optional, Tuple, Union, Dict, Any
 
 import cv2
 import numpy as np
 from deepface import DeepFace
 from PIL import Image
-
+import openai
+from dotenv import load_dotenv
+import requests
 
 class FaceEmbeddingModel:
     def __init__(self):
@@ -94,4 +96,29 @@ class FaceEmbeddingModel:
 
 
 class PromptEmbeddingModel:
-    pass
+    def __init__(self, model_name: str = "text-embedding-3-small", n8n_url: str = None):
+        load_dotenv()  # .env 파일에서 환경변수 불러오기
+        self.model_name = model_name
+        self.n8n_url = n8n_url
+        openai.api_key = os.getenv("OPENAI_API_KEY")
+        if not openai.api_key:
+            raise ValueError("OPENAI_API_KEY not found in .env file")
+
+    def recontextualize(self, prompt_source: Dict[str, Any]) -> str:
+        res = requests.post(self.n8n_url, data=prompt_source)
+        return res.text
+
+    def embed(self, texts: str) -> List[float]:
+        """
+        texts: List of strings to embed
+        returns: List of embedding vectors
+        """
+        try:
+            response = openai.embeddings.create(
+                model=self.model_name,
+                input=[texts]
+            )
+        except Exception as e:
+            raise RuntimeError(f"Failed to run text embedding model: {str(e)}")
+        
+        return response.data[0].embedding

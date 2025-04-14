@@ -5,8 +5,8 @@ import pandas as pd
 import requests
 from tqdm import tqdm
 
-from constant import CRAWL_BASE_URL, CRAWL_DATA_PATH, VECTOR_DB_URL, VECTOR_DB_COLLECTION
-from model import FaceEmbeddingModel
+from constant import CRAWL_BASE_URL, CRAWL_DATA_PATH, VECTOR_DB_URL, VECTOR_DB_COLLECTION, N8N_SUMMARIZE_PROMPT_URL
+from model import FaceEmbeddingModel, PromptEmbeddingModel
 from db import VectorDBClient
 
 
@@ -182,8 +182,9 @@ if __name__ == "__main__":
     processed_data_list = preprocessor.process_to_data_list()
 
     face_model = FaceEmbeddingModel()
+    prompt_model = PromptEmbeddingModel(n8n_url=N8N_SUMMARIZE_PROMPT_URL)
     db_client = VectorDBClient(VECTOR_DB_URL, VECTOR_DB_COLLECTION)
-    import numpy as np
+
     for idx, data in tqdm(enumerate(processed_data_list), total=len(processed_data_list)):
         profile_images = [
             os.path.join(CRAWL_DATA_PATH, cur)
@@ -197,12 +198,12 @@ if __name__ == "__main__":
         except Exception as e:
             log(f"[MODEL ERROR] {data['id']} / {str(e)}")
         
-        prompt_embeddings = np.random.rand(768).tolist()
+        recontextualized_prompt = prompt_model.recontextualize(data["payload"]["prompt_source"])
+        prompt_embeddings = prompt_model.embed(recontextualized_prompt)
 
         db_client.insert(
             point_id=idx,
-            vectors={"face":face_embeddings, "prompt":prompt_embeddings},
+            vectors={"face":face_embeddings, "prompt":prompt_embeddings, "main_face": face_embeddings[0]},
             payload=data["payload"],
         )
         data["vector"]["face"] = face_embeddings
-        print(f"Success {data['id']}")
