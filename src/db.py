@@ -120,10 +120,11 @@ class VectorDBClient:
             raise RuntimeError(f"Failed to delete points: {str(e)}")
 
     def query(
-        self,
-        query_vectors: tuple[str, List[float]],
+        self,        
+        query_vectors: List[float],
         limit: int = 10,
         score_threshold: Optional[float] = None,
+        vector_domain: str = "face",
     ) -> List[ScoredPoint]:
         """
         멀티벡터를 사용하여 유사한 포인트를 검색합니다.
@@ -136,13 +137,15 @@ class VectorDBClient:
         Returns:
             List[ScoredPoint]: 검색 결과 리스트
         """
+
         try:
-            return self.client.search(
+            return self.client.query_points(
                 collection_name=self.collection_name,
-                query_vector=query_vectors,
+                query=query_vectors,
+                using=vector_domain,
                 limit=limit,
                 score_threshold=score_threshold,
-            )
+            ).points
         except Exception as e:
             raise RuntimeError(f"Failed to query points: {str(e)}")
 

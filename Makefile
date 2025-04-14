@@ -3,7 +3,7 @@ run:
 
 qdrant:
 	docker run -p 6333:6333 -p 6334:6334 \
-		-v $(pwd)/datas/qdrant:/qdrant/storage \
+		-v $(PWD)/datas/qdrant:/qdrant/storage \
 		qdrant/qdrant 
 
 test:
