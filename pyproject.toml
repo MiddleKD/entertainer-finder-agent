@@ -3,14 +3,17 @@ name = "project"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = "==3.10"
+requires-python = "==3.10.13"
 dependencies = [
-    "fastapi",
-    "python-multipart",
-    "deepface",
-    "qdrant-client",
-    "uvicorn",
-    "pytest",
+    "fastapi==0.115.12",
+    "python-multipart==0.0.20",
+    "tensorflow==2.19.0",
+    "tf-keras==2.19.0",
+    "numpy==1.26.4",
+    "deepface==0.0.93",
+    "qdrant-client==1.13.3",
+    "uvicorn==0.34.0",
+    "pytest==8.3.5",
 ]
 
 [tool.black]
