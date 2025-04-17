@@ -1,4 +1,5 @@
 import os
+from argparse import ArgumentParser
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -179,12 +180,19 @@ class Preprocessor:
 
 
 if __name__ == "__main__":
-    crawler = Crawler(CRAWL_BASE_URL, CRAWL_DATA_PATH)
-    preprocessor = Preprocessor("datas/member_202503311252.csv")
+    parser = ArgumentParser(description="")
+    parser.add_argument("--data", type=str, required=True, help="data")
+    parser.add_argument("--crawl", action="store_true", help="crawl")
+    args = parser.parse_args()
+
+    preprocessor = Preprocessor(args.data)
     preprocessor.clean_na()
 
     profile_image_list = preprocessor.get_profile_image_list()
-    crawler.run(profile_image_list, skip_exist=True)
+    
+    if args.crawl:
+        crawler = Crawler(CRAWL_BASE_URL, CRAWL_DATA_PATH)
+        crawler.run(profile_image_list, skip_exist=True)
 
     processed_data_list = preprocessor.process_to_data_list()
 
@@ -211,7 +219,6 @@ if __name__ == "__main__":
                 vectors={"face":face_embeddings, "prompt":prompt_embeddings, "main_face": face_embeddings[0]},
                 payload=data["payload"],
             )
-            data["vector"]["face"] = face_embeddings
 
         except Exception as e:
             log(f"[MODEL ERROR] {data['id']} / {str(e)}")
