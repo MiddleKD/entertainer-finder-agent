@@ -39,14 +39,21 @@ class Crawler:
         self.base_url = base_url
         self.base_save_path = base_save_path
 
-    def run(self, url_list: list):
-        for url in tqdm(url_list, dynamic_ncols=True):
+    def is_exist(self, path:str):
+        return os.path.exists(str(path))
+
+    def run(self, url_list: list, skip_exist=True):
+        url_and_path = [(self.base_url+url, os.path.join(self.base_save_path, url)) for url in url_list]
+
+        if skip_exist:
+            url_and_path = [(url, path) for url, path in url_and_path if not self.is_exist(path)]
+        
+        for url, save_path in tqdm(url_and_path, dynamic_ncols=True):
             if pd.isna(url):
                 continue
 
             try:
-                save_path = os.path.join(self.base_save_path, url)
-                with requests.get(self.base_url + url, timeout=30, stream=True) as r:
+                with requests.get(url, timeout=30, stream=True) as r:
                     r.raise_for_status()
                     open(save_path, "wb").write(r.content)
             except Exception as e:
@@ -172,12 +179,12 @@ class Preprocessor:
 
 
 if __name__ == "__main__":
-    # crawler = Crawler(CRAWL_BASE_URL, CRAWL_DATA_PATH)
+    crawler = Crawler(CRAWL_BASE_URL, CRAWL_DATA_PATH)
     preprocessor = Preprocessor("datas/member_202503311252.csv")
     preprocessor.clean_na()
 
     profile_image_list = preprocessor.get_profile_image_list()
-    # crawler.run(profile_image_list)
+    crawler.run(profile_image_list, skip_exist=True)
 
     processed_data_list = preprocessor.process_to_data_list()
 
@@ -194,16 +201,17 @@ if __name__ == "__main__":
         try:
             face_embeddings = face_model.run_model(
                 profile_images, only_return_face=True
+            )        
+        
+            recontextualized_prompt = prompt_model.recontextualize(data["payload"]["prompt_source"])
+            prompt_embeddings = prompt_model.embed(recontextualized_prompt)
+
+            db_client.insert(
+                point_id=idx,
+                vectors={"face":face_embeddings, "prompt":prompt_embeddings, "main_face": face_embeddings[0]},
+                payload=data["payload"],
             )
+            data["vector"]["face"] = face_embeddings
+
         except Exception as e:
             log(f"[MODEL ERROR] {data['id']} / {str(e)}")
-        
-        recontextualized_prompt = prompt_model.recontextualize(data["payload"]["prompt_source"])
-        prompt_embeddings = prompt_model.embed(recontextualized_prompt)
-
-        db_client.insert(
-            point_id=idx,
-            vectors={"face":face_embeddings, "prompt":prompt_embeddings, "main_face": face_embeddings[0]},
-            payload=data["payload"],
-        )
-        data["vector"]["face"] = face_embeddings
