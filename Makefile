@@ -8,14 +8,19 @@ preprocess:
 	uv run src/preprocess.py
 
 qdrant:
-	docker run -p 6333:6333 -p 6334:6334 \
+	docker run -p 6333:6333 -p 6334:6334 --rm \
 		-v $(PWD)/datas/qdrant:/qdrant/storage \
+		--name qdrant_container \
 		qdrant/qdrant 
 
 n8n:
 	docker run -it --rm --name n8n -p 5678:5678 --network host \
 		-v $(PWD)/datas/n8n_data/_data:/home/node/.n8n \
+		--name n8n_container \
 		docker.n8n.io/n8nio/n8n
+
+benchmark:
+	PYTHONPATH=. uv run benchmark/benchmark.py
 
 test:
 	PYTHONPATH=$(PWD)/src pytest tests/ -v
@@ -26,4 +31,4 @@ format:
 	@echo "Running black..."
 	black .
 
-.PHONY: run qdrant test format n8n 
+.PHONY: run down qdrant test format n8n benchmark
