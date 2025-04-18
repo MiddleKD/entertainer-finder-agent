@@ -93,6 +93,16 @@ class FaceEmbeddingModel:
 
         except Exception as e:
             raise RuntimeError(f"Failed to run face embedding model: {str(e)}")
+    
+    def is_same_face(self, image_path1:str, image_path2:str) -> bool:
+        return self.deepface.verify(
+            img1_path = image_path1,
+            img2_path = image_path2,
+            enforce_detection=False,
+            model_name=self.model_name,
+            detector_backend=self.detector_backend,
+            threshold=0.5725,
+        )["verified"]
 
 
 class PromptEmbeddingModel:
