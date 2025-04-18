@@ -150,6 +150,30 @@ class VectorDBClient:
         except Exception as e:
             raise RuntimeError(f"Failed to query points: {str(e)}")
 
+    def fetch(self, point_ids:List[int]) -> List[Dict[str, Any]]:
+        """
+        컬렉션에서 지정된 포인트를 가져옵니다.
+
+        Args:
+            point_ids: 포인트 아이디 리스트
+
+        Returns:
+            List[Dict[str, Any]]: 반환된 포인트 리스트
+        """
+        try:
+            points = self.client.retrieve(
+                collection_name=self.collection_name,
+                ids=point_ids,
+                with_vectors=True,
+                with_payload=True,
+            )
+            for point in points:
+                trimmed = point.vector["face"][:3]
+                point.vector["face"] = trimmed
+            return points
+        except Exception as e:
+            raise RuntimeError(f"Failed to fetch points: {str(e)}")
+        
     def get_collection_info(self) -> Dict[str, Any]:
         """
         현재 컬렉션의 정보를 반환합니다.
