@@ -107,5 +107,5 @@ venv.bak/
 
 # Project specific
 *.log
-datas/
+datas
 error.log 
