@@ -1,6 +1,5 @@
-from mcp.server.fastmcp import FastMCP, Context, Image
+from mcp.server.fastmcp import FastMCP
 from dotenv import load_dotenv
-from PIL import Image as PILImage
 import numpy as np
 from textwrap import dedent
 import os
@@ -40,7 +39,10 @@ def get_lookalike_profile(image_paths: list[str]) -> str:
     for point in points:
         result_context += dedent(f"""
             ---------------
-            Profile ID: {point.id}
+            ID: {point.id}
+            Name: {point.payload["name_kr"]}
+            Birthday: {point.payload["birth"]}
+            Image: {point.payload["image_url"]}
             Info: {point.payload["prompt_source"]}
             ---------------
         """)
