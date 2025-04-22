@@ -331,6 +331,6 @@ if __name__ == "__main__":
     # calculate data_linkage_analize_accuracy
     retrieve_dataset = datasetmanager.get_data("retrieve")
     data_linkage_analize_accuracy = benchmark.data_linkage_analize_accuracy(
-        retrieve_dataset, k=4
+        retrieve_dataset, k=4, a=0.05, b=0.4725, r=0.4725
     )
     print(f"data_linkage_analize_accuracy: {data_linkage_analize_accuracy}")
