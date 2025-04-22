@@ -101,8 +101,8 @@ class DatasetManager:
         self.retrieve_dataset = [
             {
                 "id": info["id"],
-                "face": self.db_client.fetch([info["id"]])[0].vector["main_face"],
-                "query": vector_map[str(info["id"])]
+                "main_face": self.db_client.fetch([info["id"]])[0].vector["main_face"],
+                "prompt": vector_map[str(info["id"])]
             } for info in meta_infos
         ]
 
@@ -202,13 +202,13 @@ class Benchmark:
 
         for data in tqdm(dataset):
             id = data["id"]
-            face = data["face"]
-            query = data["query"]
+            main_face = data["main_face"]
+            prompt = data["prompt"]
 
             points = self.db_client.query_multidomain(
-                query_vectors_1=face,
+                query_vectors_1=main_face,
                 vector_domain_1="face",
-                query_vectors_2=query,
+                query_vectors_2=prompt,
                 vector_domain_2="prompt",
                 limit=k
             )
@@ -229,10 +229,6 @@ class Benchmark:
         accuracy = (rtp+rtn)/n
 
         return a*precision + b*recall + r*accuracy
-
-
-    def matching_satisfaction(self, dataset:Iterable):
-        return None
 
 
 if __name__ == "__main__":
