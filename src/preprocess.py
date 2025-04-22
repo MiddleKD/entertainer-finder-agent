@@ -6,9 +6,15 @@ import pandas as pd
 import requests
 from tqdm import tqdm
 
-from constant import CRAWL_BASE_URL, CRAWL_DATA_PATH, VECTOR_DB_URL, VECTOR_DB_COLLECTION, N8N_SUMMARIZE_PROMPT_URL
-from model import FaceEmbeddingModel, PromptEmbeddingModel
+from constant import (
+    CRAWL_BASE_URL,
+    CRAWL_DATA_PATH,
+    N8N_SUMMARIZE_PROMPT_URL,
+    VECTOR_DB_COLLECTION,
+    VECTOR_DB_URL,
+)
 from db import VectorDBClient
+from model import FaceEmbeddingModel, PromptEmbeddingModel
 
 
 def validate(input_value):
@@ -40,15 +46,20 @@ class Crawler:
         self.base_url = base_url
         self.base_save_path = base_save_path
 
-    def is_exist(self, path:str):
+    def is_exist(self, path: str):
         return os.path.exists(str(path))
 
     def run(self, url_list: list, skip_exist=True):
-        url_and_path = [(self.base_url+url, os.path.join(self.base_save_path, url)) for url in url_list]
+        url_and_path = [
+            (self.base_url + url, os.path.join(self.base_save_path, url))
+            for url in url_list
+        ]
 
         if skip_exist:
-            url_and_path = [(url, path) for url, path in url_and_path if not self.is_exist(path)]
-        
+            url_and_path = [
+                (url, path) for url, path in url_and_path if not self.is_exist(path)
+            ]
+
         for url, save_path in tqdm(url_and_path, dynamic_ncols=True):
             if pd.isna(url):
                 continue
@@ -189,7 +200,7 @@ if __name__ == "__main__":
     preprocessor.clean_na()
 
     profile_image_list = preprocessor.get_profile_image_list()
-    
+
     if args.crawl:
         crawler = Crawler(CRAWL_BASE_URL, CRAWL_DATA_PATH)
         crawler.run(profile_image_list, skip_exist=True)
@@ -200,7 +211,9 @@ if __name__ == "__main__":
     prompt_model = PromptEmbeddingModel(n8n_url=N8N_SUMMARIZE_PROMPT_URL)
     db_client = VectorDBClient(VECTOR_DB_URL, VECTOR_DB_COLLECTION)
 
-    for idx, data in tqdm(enumerate(processed_data_list), total=len(processed_data_list)):
+    for idx, data in tqdm(
+        enumerate(processed_data_list), total=len(processed_data_list)
+    ):
         profile_images = [
             os.path.join(CRAWL_DATA_PATH, cur)
             for cur in data.get("payload").get("images")
@@ -209,14 +222,20 @@ if __name__ == "__main__":
         try:
             face_embeddings = face_model.run_model(
                 profile_images, only_return_face=True
-            )        
-        
-            recontextualized_prompt = prompt_model.recontextualize(data["payload"]["prompt_source"])
+            )
+
+            recontextualized_prompt = prompt_model.recontextualize(
+                data["payload"]["prompt_source"]
+            )
             prompt_embeddings = prompt_model.embed(recontextualized_prompt)
 
             db_client.insert(
                 point_id=idx,
-                vectors={"face":face_embeddings, "prompt":prompt_embeddings, "main_face": face_embeddings[0]},
+                vectors={
+                    "face": face_embeddings,
+                    "prompt": prompt_embeddings,
+                    "main_face": face_embeddings[0],
+                },
                 payload=data["payload"],
             )
 

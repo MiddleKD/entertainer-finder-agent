@@ -37,7 +37,11 @@ def test_insert_and_query(db_client):
     test_id = 1
     face_vector = np.random.rand(512).tolist()
     prompt_vector = np.random.rand(1536).tolist()
-    test_vector = {"face": face_vector, "prompt": prompt_vector, "main_face": face_vector}
+    test_vector = {
+        "face": face_vector,
+        "prompt": prompt_vector,
+        "main_face": face_vector,
+    }
     test_payload = {"name": "test", "value": 123}
 
     # 삽입
@@ -72,7 +76,9 @@ def test_insert_bulk(db_client):
 
     # 각 포인트 검색
     for point in points:
-        results = db_client.query(point["vectors"]["face"], limit=1, vector_domain="face")
+        results = db_client.query(
+            point["vectors"]["face"], limit=1, vector_domain="face"
+        )
         assert len(results) == 1
         assert results[0].id == point["id"]
         assert results[0].payload == point["payload"]
@@ -84,7 +90,11 @@ def test_delete(db_client):
     test_id = 1
     face_vector = np.random.rand(512).tolist()
     prompt_vector = np.random.rand(1536).tolist()
-    test_vector = {"face": face_vector, "prompt": prompt_vector, "main_face": face_vector}
+    test_vector = {
+        "face": face_vector,
+        "prompt": prompt_vector,
+        "main_face": face_vector,
+    }
     db_client.insert(test_id, test_vector)
 
     # 삭제
@@ -102,7 +112,11 @@ def test_delete_bulk(db_client):
     for point_id in point_ids:
         face_vector = np.random.rand(512).tolist()
         prompt_vector = np.random.rand(1536).tolist()
-        test_vector = {"face": face_vector, "prompt": prompt_vector, "main_face": face_vector}
+        test_vector = {
+            "face": face_vector,
+            "prompt": prompt_vector,
+            "main_face": face_vector,
+        }
         db_client.insert(point_id, test_vector)
 
     # 일괄 삭제
@@ -110,7 +124,9 @@ def test_delete_bulk(db_client):
 
     # 삭제 확인
     for point_id in point_ids:
-        results = db_client.query(np.random.rand(512).tolist(), limit=10, vector_domain="face")
+        results = db_client.query(
+            np.random.rand(512).tolist(), limit=10, vector_domain="face"
+        )
         assert all(result.id != point_id for result in results)
 
 
@@ -120,13 +136,20 @@ def test_score_threshold(db_client):
     test_id = 1
     face_vector = np.random.rand(512).tolist()
     prompt_vector = np.random.rand(1536).tolist()
-    test_vector = {"face": face_vector, "prompt": prompt_vector, "main_face": face_vector}
+    test_vector = {
+        "face": face_vector,
+        "prompt": prompt_vector,
+        "main_face": face_vector,
+    }
     db_client.insert(test_id, test_vector)
 
     # 다른 벡터로 검색 (낮은 유사도)
     different_vector = np.random.rand(512).tolist()
-    results = db_client.query(different_vector, score_threshold=0.9, vector_domain="face")
+    results = db_client.query(
+        different_vector, score_threshold=0.9, vector_domain="face"
+    )
     assert len(results) == 0
+
 
 def test_collection_info(db_client):
     """컬렉션 정보 조회 테스트"""

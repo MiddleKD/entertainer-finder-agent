@@ -1,6 +1,6 @@
-import numpy as np
-from typing import Any, Dict, List, Optional, Union, Literal
+from typing import Any, Dict, List, Literal, Optional, Union
 
+import numpy as np
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from qdrant_client.models import (
@@ -122,12 +122,12 @@ class VectorDBClient:
             raise RuntimeError(f"Failed to delete points: {str(e)}")
 
     def query(
-        self,        
+        self,
         query_vectors: List[float],
         limit: int = 10,
         score_threshold: Optional[float] = None,
         vector_domain: Literal["face", "prompt", "main_face"] = "face",
-        with_vectors: bool = False
+        with_vectors: bool = False,
     ) -> List[ScoredPoint]:
         """
         멀티벡터를 사용하여 유사한 포인트를 검색합니다.
@@ -146,13 +146,13 @@ class VectorDBClient:
                 collection_name=self.collection_name,
                 query=query_vectors,
                 using=vector_domain,
-                with_vectors = with_vectors,
+                with_vectors=with_vectors,
                 limit=limit,
                 score_threshold=score_threshold,
             ).points
         except Exception as e:
             raise RuntimeError(f"Failed to query points: {str(e)}")
-        
+
     def query_multidomain(
         self,
         query_vectors_1: List[float],
@@ -178,14 +178,14 @@ class VectorDBClient:
                 collection_name=self.collection_name,
                 query=query_vectors_1,
                 using=vector_domain_1,
-                with_vectors = True,
-                limit=int(limit*1.2),
+                with_vectors=True,
+                limit=int(limit * 1.2),
             ).points
 
             matrix = []
             for point in points:
                 matrix.append(point.vector[vector_domain_2])
-            
+
             matrix = np.array(matrix)
             top_k_idx = np.argsort(query_vectors_2 @ matrix.T)[-limit:][::-1]
 
@@ -194,7 +194,7 @@ class VectorDBClient:
         except Exception as e:
             raise RuntimeError(f"Failed to query points: {str(e)}")
 
-    def fetch(self, point_ids:List[int]) -> List[Dict[str, Any]]:
+    def fetch(self, point_ids: List[int]) -> List[Dict[str, Any]]:
         """
         컬렉션에서 지정된 포인트를 가져옵니다.
 
@@ -217,7 +217,7 @@ class VectorDBClient:
             return points
         except Exception as e:
             raise RuntimeError(f"Failed to fetch points: {str(e)}")
-        
+
     def get_collection_info(self) -> Dict[str, Any]:
         """
         현재 컬렉션의 정보를 반환합니다.

@@ -1,13 +1,15 @@
-import io, os
-from typing import List, Optional, Tuple, Union, Dict, Any
+import io
+import os
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
-from deepface import DeepFace
-from PIL import Image
 import openai
-from dotenv import load_dotenv
 import requests
+from deepface import DeepFace
+from dotenv import load_dotenv
+from PIL import Image
+
 
 class FaceEmbeddingModel:
     def __init__(self):
@@ -93,11 +95,11 @@ class FaceEmbeddingModel:
 
         except Exception as e:
             raise RuntimeError(f"Failed to run face embedding model: {str(e)}")
-    
-    def is_same_face(self, image_path1:str, image_path2:str) -> bool:
+
+    def is_same_face(self, image_path1: str, image_path2: str) -> bool:
         return self.deepface.verify(
-            img1_path = image_path1,
-            img2_path = image_path2,
+            img1_path=image_path1,
+            img2_path=image_path2,
             enforce_detection=False,
             model_name=self.model_name,
             detector_backend=self.detector_backend,
@@ -124,11 +126,8 @@ class PromptEmbeddingModel:
         returns: List of embedding vectors
         """
         try:
-            response = openai.embeddings.create(
-                model=self.model_name,
-                input=[texts]
-            )
+            response = openai.embeddings.create(model=self.model_name, input=[texts])
         except Exception as e:
             raise RuntimeError(f"Failed to run text embedding model: {str(e)}")
-        
+
         return response.data[0].embedding
