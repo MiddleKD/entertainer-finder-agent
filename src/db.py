@@ -1,4 +1,5 @@
-from typing import Any, Dict, List, Optional, Union
+import numpy as np
+from typing import Any, Dict, List, Optional, Union, Literal
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
@@ -125,7 +126,8 @@ class VectorDBClient:
         query_vectors: List[float],
         limit: int = 10,
         score_threshold: Optional[float] = None,
-        vector_domain: str = "face",
+        vector_domain: Literal["face", "prompt", "main_face"] = "face",
+        with_vectors: bool = False
     ) -> List[ScoredPoint]:
         """
         멀티벡터를 사용하여 유사한 포인트를 검색합니다.
@@ -144,9 +146,51 @@ class VectorDBClient:
                 collection_name=self.collection_name,
                 query=query_vectors,
                 using=vector_domain,
+                with_vectors = with_vectors,
                 limit=limit,
                 score_threshold=score_threshold,
             ).points
+        except Exception as e:
+            raise RuntimeError(f"Failed to query points: {str(e)}")
+        
+    def query_multidomain(
+        self,
+        query_vectors_1: List[float],
+        vector_domain_1: Literal["face", "prompt", "main_face"],
+        query_vectors_2: List[float],
+        vector_domain_2: Literal["face", "prompt", "main_face"],
+        limit: int = 10,
+    ) -> List[ScoredPoint]:
+        """
+        멀티벡터를 사용하여 유사한 포인트를 검색합니다.
+
+        Args:
+            query_vectors: 검색할 벡터 이름과 벡터 데이터의 딕셔너리
+            limit: 반환할 결과 수
+            score_threshold: 유사도 점수 임계값
+
+        Returns:
+            List[ScoredPoint]: 검색 결과 리스트
+        """
+
+        try:
+            points = self.client.query_points(
+                collection_name=self.collection_name,
+                query=query_vectors_1,
+                using=vector_domain_1,
+                with_vectors = True,
+                limit=int(limit*1.2),
+            ).points
+
+            matrix = []
+            for point in points:
+                matrix.append(point.vector[vector_domain_2])
+            
+            matrix = np.array(matrix)
+            top_k_idx = np.argsort(query_vectors_2 @ matrix.T)[-limit:][::-1]
+
+            return [points[idx] for idx in top_k_idx]
+
         except Exception as e:
             raise RuntimeError(f"Failed to query points: {str(e)}")
 

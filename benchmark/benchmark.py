@@ -1,7 +1,7 @@
 import os, sys
 import kagglehub
 from kagglehub import KaggleDatasetAdapter
-from typing import Iterable, Literal
+from typing import Iterable, Literal, Union, List, Dict
 from tqdm import tqdm
 import random
 import numpy as np
@@ -9,31 +9,55 @@ import requests
 import json
 
 sys.path.append("src")
-from src.model import FaceEmbeddingModel
-from src.constant import VECTOR_DB_URL, VECTOR_DB_COLLECTION
+from src.model import FaceEmbeddingModel, PromptEmbeddingModel
+from src.constant import VECTOR_DB_URL, VECTOR_DB_COLLECTION, N8N_SUMMARIZE_PROMPT_URL
 from src.db import VectorDBClient
 
 RANDOM_SEED = 42
-N8N_URL = "http://localhost:5678/webhook/e01a6079-9677-43f6-b1be-f5e25f864b0b"
+N8N_URL = N8N_SUMMARIZE_PROMPT_URL
 RETRIEVE_QUERY_PATH = "benchmark/dataset/retrieve_queries.json"
+RETRIEVE_VECTOR_PATH = "benchmark/dataset/retrieve_vectors.npz"
+
+def remove_file(path: Union[str, List[str]]):
+    if isinstance(path, str):
+        path = [path]
+    for p in path:
+        try:
+            os.remove(p)
+        except FileNotFoundError:
+            pass
+
+def open_file(path: str):
+    if path.endswith(".json"):
+        with open(path, mode="r") as f:
+            return json.load(f)
+    elif path.endswith(".npz"):
+        return np.load(path, allow_pickle=True)["data"].item()
+    else:
+        raise NameError("unknow file extension")
 
 class DatasetManager:
     def __init__(self, 
             lfw_match_data_num:int, 
             lfw_mismatch_data_num:int, 
             face_data_num:int, 
-            retrieve_data_num:int, 
+            retrieve_data_num:int,
+            db_client:VectorDBClient, 
             retrieve_query_path:str = RETRIEVE_QUERY_PATH,
-            n8n_url:str = N8N_URL
+            retrieve_vector_path:str = RETRIEVE_VECTOR_PATH,
+            n8n_url:str = N8N_URL,
+            text_model:PromptEmbeddingModel = None,
         ) -> None:
 
         random.seed(RANDOM_SEED)
 
         lfw_root_path = kagglehub.dataset_download("jessicali9530/lfw-dataset")   
         self.lfw_root_path = os.path.join(lfw_root_path, "lfw-deepfunneled", "lfw-deepfunneled")
+        self.db_client = db_client
         self.retrieve_query_path = retrieve_query_path
+        self.retrieve_vector_path = retrieve_vector_path
         self.n8n_url = n8n_url
-
+        self.text_model = text_model
 
         # lfw match dataset
         self.lfw_match_dataset = list(kagglehub.load_dataset(
@@ -50,7 +74,6 @@ class DatasetManager:
             "mismatchpairsDevTrain.csv"
         ).sample(frac=1, random_state=RANDOM_SEED).reset_index(drop=True)[:lfw_mismatch_data_num].T.to_dict().values())
 
-        self.db_client = VectorDBClient(VECTOR_DB_URL, VECTOR_DB_COLLECTION)
         db_data_num = self.db_client.get_collection_info()["points_count"]
         points = self.db_client.fetch(random.choices(range(0, db_data_num), k=face_data_num+100))
         
@@ -61,11 +84,28 @@ class DatasetManager:
 
         # retrieve dataset        
         meta_infos = [{"id":point.id, "meta":point.vector["prompt"], "prompt_source":point.payload["prompt_source"]} for point in points][:retrieve_data_num]
-        if not os.path.exists(self.retrieve_query_path):
-            self._make_retrieve_query(meta_infos)
-        with open(self.retrieve_query_path, mode="r") as f:
-            query_map = json.load(f)
-        self.retrieve_dataset = [{"query":query_map[str(info["id"])], **info} for info in meta_infos]
+
+        is_query_exist = os.path.exists(self.retrieve_query_path)
+        is_vector_exist = os.path.exists(self.retrieve_vector_path)
+        if is_query_exist and is_vector_exist:
+            query_map = open_file(self.retrieve_query_path)
+            vector_map = open_file(self.retrieve_vector_path)
+        elif is_query_exist and not is_vector_exist:
+            query_map = open_file(self.retrieve_query_path)
+            vector_map = self._make_retrieve_vector(query_map)
+        else:
+            remove_file([self.retrieve_query_path, self.retrieve_vector_path])
+            query_map = self._make_retrieve_query(meta_infos)
+            vector_map = self._make_retrieve_vector(query_map)
+        
+        self.retrieve_dataset = [
+            {
+                "id": info["id"],
+                "face": self.db_client.fetch([info["id"]])[0].vector["main_face"],
+                "query": vector_map[str(info["id"])]
+            } for info in meta_infos
+        ]
+
 
     def _lfw_match_preprocess(self, dataset:list):
         dataset = [
@@ -97,7 +137,15 @@ class DatasetManager:
             queries[data["id"]] = res.text
         with open(self.retrieve_query_path, mode="w") as f:
             json.dump(queries, f, indent=4, ensure_ascii=False)
+        return queries
 
+    def _make_retrieve_vector(self, query_map:Union[Dict[str, str], Dict[int, str]]):
+        vectors = {}
+        for id, query in tqdm(query_map.items(), total=len(query_map), desc="Make retrieve query embedding"):
+            embedding = self.text_model.embed(query)
+            vectors[str(id)] = embedding
+        np.savez(self.retrieve_vector_path, data=vectors)
+        return vectors
 
     def get_data(self, type_of_dataset:Literal["lfw_match", "lfw_mismatch", "face", "retrieve"]):
         match type_of_dataset:
@@ -113,8 +161,9 @@ class DatasetManager:
 
 
 class Benchmark:
-    def __init__(self) -> None:
-        self.face_model = FaceEmbeddingModel()
+    def __init__(self, face_model: FaceEmbeddingModel, db_client: VectorDBClient) -> None:
+        self.face_model = face_model
+        self.db_client = db_client
 
     def face_feature_extraction_accuracy(self, match_dataset:Iterable, mismatch_dataset:Iterable):
 
@@ -143,30 +192,82 @@ class Benchmark:
 
         return np.mean(similarities)
 
-    def data_linkage_analize_accuracy(self, dataset:Iterable):
-        pass
+    def data_linkage_analize_accuracy(self, dataset:Iterable, k=3, a=0.05, b=0.4725, r=0.4725):
+        
+        rtp = 0
+        rtn = 0 # 정의되지 않음
+        rfp = 0
+        rfn = 0
+        n = len(dataset)
+
+        for data in tqdm(dataset):
+            id = data["id"]
+            face = data["face"]
+            query = data["query"]
+
+            points = self.db_client.query_multidomain(
+                query_vectors_1=face,
+                vector_domain_1="face",
+                query_vectors_2=query,
+                vector_domain_2="prompt",
+                limit=k
+            )
+
+            retrieved_point_ids = [point.id for point in points]
+
+            if id in retrieved_point_ids:
+                rtp += 1
+            else:
+                rfn += 1
+            
+            for retrieved_id in retrieved_point_ids:
+                if retrieved_id != id:
+                    rfp += 1
+
+        precision = rtp/(rtp+rfp)
+        recall = rtp/(rtp+rfn)
+        accuracy = (rtp+rtn)/n
+
+        return a*precision + b*recall + r*accuracy
+
 
     def matching_satisfaction(self, dataset:Iterable):
         return None
 
 
 if __name__ == "__main__":
+    face_model = FaceEmbeddingModel()
+    text_model = PromptEmbeddingModel()
+    db_client = VectorDBClient(VECTOR_DB_URL, VECTOR_DB_COLLECTION)
+
     datasetmanager = DatasetManager(
         lfw_match_data_num=500, 
         lfw_mismatch_data_num=500, 
         face_data_num=1000, 
-        retrieve_data_num=200
+        retrieve_data_num=200,
+        db_client=db_client,
+        text_model=text_model
     )
-    benchmark = Benchmark()
+    benchmark = Benchmark(
+        face_model=face_model,
+        db_client=db_client
+    )
 
-    # match_dataset = datasetmanager.get_data("lfw_match")
-    # mismatch_dataset = datasetmanager.get_data("lfw_mismatch")
 
-    # face_feature_extraction_accuracy = benchmark.face_feature_extraction_accuracy(match_dataset, mismatch_dataset)
-    # print(face_feature_extraction_accuracy)
+    # calculate face_feature_extraction_accuracy
+    match_dataset = datasetmanager.get_data("lfw_match")
+    mismatch_dataset = datasetmanager.get_data("lfw_mismatch")
+    face_feature_extraction_accuracy = benchmark.face_feature_extraction_accuracy(match_dataset, mismatch_dataset)
+    print(f"face_feature_extraction_accuracy: {face_feature_extraction_accuracy}")
 
-    # face_dataset = datasetmanager.get_data("face")
-    # featuremap_generation_accuracy = benchmark.featuremap_generation_accuracy(face_dataset)
-    # print(featuremap_generation_accuracy)
 
+    # calculate featuremap_generation_accuracy
+    face_dataset = datasetmanager.get_data("face")
+    featuremap_generation_accuracy = benchmark.featuremap_generation_accuracy(face_dataset)
+    print(f"featuremap_generation_accuracy: {featuremap_generation_accuracy}")
+
+
+    # calculate data_linkage_analize_accuracy
     retrieve_dataset = datasetmanager.get_data("retrieve")
+    data_linkage_analize_accuracy = benchmark.data_linkage_analize_accuracy(retrieve_dataset, k=4)
+    print(f"data_linkage_analize_accuracy: {data_linkage_analize_accuracy}")
