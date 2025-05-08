@@ -107,5 +107,6 @@ venv.bak/
 
 # Project specific
 *.log
-datas
-error.log 
+
+datas/*/*
+!datas/*/.gitkeep
