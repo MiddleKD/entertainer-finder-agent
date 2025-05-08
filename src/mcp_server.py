@@ -1,3 +1,4 @@
+import argparse
 import os
 from textwrap import dedent
 
@@ -8,6 +9,15 @@ from constant import UPLOAD_CACHE_DIR, VECTOR_DB_COLLECTION, VECTOR_DB_URL
 from db import VectorDBClient
 from model import FaceEmbeddingModel
 
+
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=8001)
+    return parser.parse_args()
+
+
+args = get_args()
+
 face_model = FaceEmbeddingModel()
 db_client = VectorDBClient(VECTOR_DB_URL, VECTOR_DB_COLLECTION)
 
@@ -15,7 +25,7 @@ mcp = FastMCP(
     name="Entertainer Search",
     version="0.0.1",
     description="Retrieve entertainer face embedding DB",
-    port=8001,
+    port=args.port,
 )
 
 

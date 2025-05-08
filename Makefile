@@ -2,7 +2,7 @@ run_server:
 	uv run uvicorn main:app --host 127.0.0.1 --port 8000 --reload --app-dir src
 
 run_mcp:
-	uv run src/mcp_server.py 
+	uv run src/mcp_server.py --port 8001
 
 preprocess:
 	uv run src/preprocess.py
