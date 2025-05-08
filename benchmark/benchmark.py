@@ -106,7 +106,7 @@ class Benchmark:
         recall = rtp / (rtp + rfn)
         accuracy = (rtp + rtn) / n
 
-        return a * precision + b * recall + r * accuracy
+        return (a * precision + b * recall + r * accuracy) * 100
 
 
 if __name__ == "__main__":
