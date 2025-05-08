@@ -15,7 +15,7 @@ qdrant:
 
 n8n:
 	docker run -it --rm --name n8n -p 5678:5678 --network host \
-		-v $(PWD)/datas/n8n_data/_data:/home/node/.n8n \
+		-v $(PWD)/datas/n8n_data:/home/node/.n8n \
 		--name n8n_container \
 		docker.n8n.io/n8nio/n8n
 
