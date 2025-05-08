@@ -37,4 +37,4 @@ format:
 	@echo "Running black..."
 	black .
 
-.PHONY: run down qdrant test format n8n benchmark
+.PHONY: run-up run-down dev-server dev-mcp dev-preprocess dev-qdrant dev-n8n dev-benchmark test format
